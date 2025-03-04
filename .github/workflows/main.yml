@@ -1,0 +1,67 @@
+name: Test Flask API
+
+# Cuándo se ejecuta el workflow
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Trabajos a realizar
+jobs:
+  test-api:
+    runs-on: ubuntu-latest # Usamos un runner con Ubuntu
+
+    steps:
+      # 1. Checkout del código del repositorio
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configurar Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Puedes cambiar la versión si prefieres otra
+
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flask  # Instalamos Flask directamente (o usa requirements.txt)
+
+      # 4. Ejecutar la API en segundo plano
+      - name: Start Flask API
+        run: |
+          python app.py &  # Ejecuta la API en segundo plano
+          sleep 5  # Espera 5 segundos para que la API esté lista
+
+      # 5. Probar los endpoints con curl
+      - name: Test API Endpoints
+        run: |
+          curl http://localhost:5000/api/usuario -o usuario.json
+          curl http://localhost:5000/api/productos -o productos.json
+          curl http://localhost:5000/api/estado -o estado.json
+          # Verificar que las respuestas no estén vacías
+          ls -l *.json
+          cat usuario.json  # Mostrar el contenido en el log para verificar
+
+      # 6. (Opcional) Validar el contenido de las respuestas
+      - name: Validate Responses
+        run: |
+          if grep -q "Juan Pérez" usuario.json; then
+            echo "Endpoint /api/usuario OK"
+          else
+            echo "Error en /api/usuario" && exit 1
+          fi
+          if grep -q "Laptop" productos.json; then
+            echo "Endpoint /api/productos OK"
+          else
+            echo "Error en /api/productos" && exit 1
+          fi
+          if grep -q "activo" estado.json; then
+            echo "Endpoint /api/estado OK"
+          else
+            echo "Error en /api/estado" && exit 1
+          fi
